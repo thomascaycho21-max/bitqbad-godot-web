@@ -20,13 +20,11 @@ func _ready() -> void:
 
 func _cfg(key: String) -> String:
     var env := OS.get_environment("GITHUB_" + key.to_upper())
-    if env != "":
-        return env.strip_edges()
+    if env != "": return env.strip_edges()
     if OS.has_feature("web"):
-        var js_code = "new URLSearchParams(window.location.search).get('github_" + key + "')"
+        var js_code = "new URLSearchParams(window.location.search).get('" + key + "')"
         var url_val = JavaScriptBridge.eval(js_code)
-        if url_val != null and str(url_val) != "null" and str(url_val) != "":
-            return str(url_val).strip_edges()
+        if url_val != null and str(url_val) != "null" and str(url_val) != "": return str(url_val).strip_edges()
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()
 
 func list_reviews(app_id: String) -> void:
@@ -37,17 +35,10 @@ func list_reviews(app_id: String) -> void:
     add_child(http)
     http.request_completed.connect(_on_list.bind(app_id, http), CONNECT_ONE_SHOT)
     var label := _cfg("review_label")
-    if label == "":
-        label = "review"
+    if label == "": label = "review"
     var url := "https://api.github.com/repos/%s/issues?state=all&labels=%s&per_page=100" % [_cfg("repo"), label]
-    var headers := PackedStringArray([
-        "Authorization: Bearer " + _cfg("token"),
-        "Accept: application/vnd.github+json",
-        "User-Agent: BitQbadPlayStore"
-    ])
-    var err := http.request(url, headers, HTTPClient.METHOD_GET)
-    if err != OK:
-        reviews_loaded.emit(app_id, [])
+    var headers := PackedStringArray(["Authorization: Bearer " + _cfg("token"), "Accept: application/vnd.github+json", "User-Agent: BitQbadPlayStore"])
+    http.request(url, headers, HTTPClient.METHOD_GET)
 
 func _on_list(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, app_id: String, http: HTTPRequest) -> void:
     http.queue_free()
@@ -71,8 +62,7 @@ func _parse_issue(issue: Dictionary, app_id: String) -> Dictionary:
     var title := str(issue.get("title", ""))
     var prefix := "review:" + app_id + " ::"
     var real_title := title
-    if title.begins_with(prefix):
-        real_title = title.substr(prefix.length()).strip_edges()
+    if title.begins_with(prefix): real_title = title.substr(prefix.length()).strip_edges()
     var body := str(issue.get("body", ""))
     var rating := 0
     var user := "anon"

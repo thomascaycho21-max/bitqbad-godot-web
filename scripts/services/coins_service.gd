@@ -14,44 +14,33 @@ func _ready() -> void:
 func _init_github() -> void:
     _gh_token = _cfg("token")
     _gh_repo = _cfg_coins_repo()
-    if _gh_token == "":
-        _gh_error = "Falta GITHUB_TOKEN"
-        return
-    if _gh_repo == "" or not _gh_repo.contains("/"):
-        _gh_error = "Falta GITHUB_COINS_REPO (usuario/repo)"
-        return
+    if _gh_token == "": _gh_error = "Falta GITHUB_TOKEN"; return
+    if _gh_repo == "" or not _gh_repo.contains("/"): _gh_error = "Falta GITHUB_COINS_REPO"; return
     _gh_enabled = true
 
 func _cfg(key: String) -> String:
     var env := OS.get_environment("GITHUB_" + key.to_upper())
-    if env != "":
-        return env.strip_edges()
+    if env != "": return env.strip_edges()
     if OS.has_feature("web"):
-        var js_code = "new URLSearchParams(window.location.search).get('github_" + key + "')"
-        var url_val = JavaScriptBridge.eval(js_code)
-        if url_val != null and str(url_val) != "null" and str(url_val) != "":
-            return str(url_val).strip_edges()
+        var url_val = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('" + key + "')")
+        if url_val != null and str(url_val) != "null" and str(url_val) != "": return str(url_val).strip_edges()
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()
 
 func _cfg_coins_repo() -> String:
     var env := OS.get_environment("GITHUB_COINS_REPO")
     if env != "": return env.strip_edges()
     if OS.has_feature("web"):
-        var url_val = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('github_coins_repo')")
-        if url_val != null and str(url_val) != "null" and str(url_val) != "":
-            return str(url_val).strip_edges()
+        var url_val = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('coins_repo')")
+        if url_val != null and str(url_val) != "null" and str(url_val) != "": return str(url_val).strip_edges()
     return str(ProjectSettings.get_setting("bitqbad/github/coins_repo", "")).strip_edges()
 
-func is_github_enabled() -> bool:
-    return _gh_enabled
-func github_error() -> String:
-    return _gh_error
+func is_github_enabled() -> bool: return _gh_enabled
+func github_error() -> String: return _gh_error
 
 func _load_local() -> void:
     var cfg := ConfigFile.new()
     if cfg.load(PATH) == OK:
-        var raw = cfg.get_value("data", "wallets", "{}")
-        var parsed = JSON.parse_string(str(raw))
+        var parsed = JSON.parse_string(str(cfg.get_value("data", "wallets", "{}")))
         if parsed is Dictionary: _wallets = parsed
 
 func _save_local() -> void:
@@ -96,10 +85,7 @@ func _sync_github(user: String, wallet: Dictionary) -> void:
     for ch in user:
         if ch.is_valid_identifier() or ch == "-" or ch == "_" or (ch >= "0" and ch <= "9"): safe += ch
     if safe == "": safe = "anon"
-    var path := "wallets/%s.json" % safe
-    var content := JSON.stringify(wallet, "  ")
-    var b64 := Marshalls.utf8_to_base64(content)
-    _get_sha_then_write(path, b64, user)
+    _get_sha_then_write("wallets/%s.json" % safe, Marshalls.utf8_to_base64(JSON.stringify(wallet, "  ")), user)
 
 func _get_sha_then_write(path: String, b64: String, user: String) -> void:
     var http := HTTPRequest.new()
