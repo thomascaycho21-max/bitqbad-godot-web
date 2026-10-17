@@ -23,6 +23,12 @@ func _cfg(key: String) -> String:
     var env := OS.get_environment("GITHUB_" + key.to_upper())
     if env != "":
         return env.strip_edges()
+    # Leer desde la URL (para Render Web)
+    if OS.has_feature("web"):
+        var js_code = "new URLSearchParams(window.location.search).get('github_" + key + "')"
+        var url_val = JavaScriptBridge.eval(js_code)
+        if url_val != null and str(url_val) != "null" and str(url_val) != "":
+            return str(url_val).strip_edges()
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()
 
 func list_reviews(app_id: String) -> void:
