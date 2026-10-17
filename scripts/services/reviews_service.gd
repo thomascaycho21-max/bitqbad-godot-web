@@ -6,6 +6,9 @@ var enabled := false
 var error := ""
 
 func _ready() -> void:
+    # Esperar 1 segundo para que el HTML inyecte el token en Render
+    await get_tree().create_timer(1.0).timeout
+    
     var token := _cfg("token")
     var repo := _cfg("repo")
     if token == "":

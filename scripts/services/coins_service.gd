@@ -8,6 +8,9 @@ var _gh_error := ""
 
 func _ready() -> void:
     _load_local()
+    # Esperar 1 segundo para que el HTML inyecte el token en Render
+    await get_tree().create_timer(1.0).timeout
+    
     _gh_token = _cfg("token")
     _gh_repo = _cfg("coins_repo")
     if _gh_token == "": _gh_error = "Falta GITHUB_TOKEN"; return
