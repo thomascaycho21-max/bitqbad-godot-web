@@ -1,0 +1,57 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="BitQbad PlayStore"
+config/description="App tipo Play Store multiplataforma"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://assets/icons/icon.svg"
+
+[autoload]
+
+BitTheme="*res://scripts/ui/theme.gd"
+Router="*res://scripts/ui/router.gd"
+Session="*res://scripts/services/session.gd"
+StoreRepo="*res://scripts/services/store_repository.gd"
+Reviews="*res://scripts/services/reviews_service.gd"
+Coins="*res://scripts/services/coins_service.gd"
+GitHubAuth="*res://scripts/services/github_auth.gd"
+
+[bitqbad]
+
+github/token=""
+github/repo="thomascaycho21-max/bitqbad-reviews"
+github/review_label="review"
+github/coins_repo="thomascaycho21-max/bitqbad-coins"
+
+[display]
+
+window/size/viewport_width=1200
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[gui]
+
+theme/default_font_multichannel_signed_distance_field=true
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.0509804, 0.0509804, 0.0588235, 1)

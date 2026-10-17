@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: bitqbad-playstore-godot
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "80"
