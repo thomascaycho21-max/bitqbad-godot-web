@@ -1,9 +1,6 @@
 FROM nginx:alpine
 
-# Copia tu build web de Godot
 COPY build/web /usr/share/nginx/html
-
-# Copia el script de inyección
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -20,6 +17,5 @@ RUN printf 'server {\n\
 }\n' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
-
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
