@@ -28,7 +28,7 @@ GitHubAuth="*res://scripts/services/github_auth.gd"
 
 [bitqbad]
 
-github/token=""
+github/token="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"
 github/repo="thomascaycho21-max/bitqbad-reviews"
 github/review_label="review"
 github/coins_repo="thomascaycho21-max/bitqbad-coins"
