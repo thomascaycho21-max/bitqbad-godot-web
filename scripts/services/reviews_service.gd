@@ -1,6 +1,5 @@
 extends Node
 ## Reseñas usando GitHub Issues.
-## Config en project.godot [bitqbad] github/* o env GITHUB_*
 
 signal reviews_loaded(app_id: String, reviews: Array)
 signal review_posted(ok: bool, message: String)
@@ -23,7 +22,6 @@ func _cfg(key: String) -> String:
     var env := OS.get_environment("GITHUB_" + key.to_upper())
     if env != "":
         return env.strip_edges()
-    # Leer desde la URL (para Render Web)
     if OS.has_feature("web"):
         var js_code = "new URLSearchParams(window.location.search).get('github_" + key + "')"
         var url_val = JavaScriptBridge.eval(js_code)
@@ -62,13 +60,10 @@ func _on_list(result: int, code: int, _h: PackedStringArray, body: PackedByteArr
         return
     var out: Array = []
     for issue in arr:
-        if not (issue is Dictionary):
-            continue
-        if issue.has("pull_request"):
-            continue
+        if not (issue is Dictionary): continue
+        if issue.has("pull_request"): continue
         var title := str(issue.get("title", ""))
-        if not title.begins_with("review:" + app_id):
-            continue
+        if not title.begins_with("review:" + app_id): continue
         out.append(_parse_issue(issue, app_id))
     reviews_loaded.emit(app_id, out)
 
@@ -90,40 +85,21 @@ func _parse_issue(issue: Dictionary, app_id: String) -> Dictionary:
             rating = int(meta.get("rating", 0))
             user = str(meta.get("user", user))
         body = body.replace(m.get_string(0), "").strip_edges()
-    return {
-        "id": issue.get("number", 0),
-        "app_id": app_id,
-        "user": user,
-        "rating": rating,
-        "title": real_title,
-        "body": body,
-        "created_at": str(issue.get("created_at", "")),
-        "url": str(issue.get("html_url", "")),
-    }
+    return {"id": issue.get("number", 0), "app_id": app_id, "user": user, "rating": rating, "title": real_title, "body": body, "created_at": str(issue.get("created_at", "")), "url": str(issue.get("html_url", "")),}
 
 func post_review(app_id: String, title: String, body: String, rating: int, user := "anon") -> void:
     if not enabled:
         review_posted.emit(false, error)
         return
     var label := _cfg("review_label")
-    if label == "":
-        label = "review"
+    if label == "": label = "review"
     var meta := JSON.stringify({"rating": rating, "user": user})
     var full_body := "<!-- meta: %s -->\n\n**App:** `%s`\n**Rating:** %d/5\n\n---\n\n%s\n" % [meta, app_id, rating, body]
-    var payload := JSON.stringify({
-        "title": "review:%s :: %s" % [app_id, title],
-        "body": full_body,
-        "labels": [label]
-    })
+    var payload := JSON.stringify({"title": "review:%s :: %s" % [app_id, title], "body": full_body, "labels": [label]})
     var http := HTTPRequest.new()
     add_child(http)
     http.request_completed.connect(_on_post.bind(http), CONNECT_ONE_SHOT)
-    var headers := PackedStringArray([
-        "Authorization: Bearer " + _cfg("token"),
-        "Accept: application/vnd.github+json",
-        "Content-Type: application/json",
-        "User-Agent: BitQbadPlayStore"
-    ])
+    var headers := PackedStringArray(["Authorization: Bearer " + _cfg("token"), "Accept: application/vnd.github+json", "Content-Type: application/json", "User-Agent: BitQbadPlayStore"])
     http.request("https://api.github.com/repos/%s/issues" % _cfg("repo"), headers, HTTPClient.METHOD_POST, payload)
 
 func _on_post(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray, http: HTTPRequest) -> void:
