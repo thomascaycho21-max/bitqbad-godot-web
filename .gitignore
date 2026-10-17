@@ -3,3 +3,4 @@
 build/android/
 *.apk
 *.aab
+scripts/services/secrets.gd
