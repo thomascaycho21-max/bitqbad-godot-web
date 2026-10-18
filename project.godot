@@ -18,9 +18,11 @@ config/icon="res://assets/icons/icon.svg"
 
 [autoload]
 
+Progress="*res://scripts/services/progress_service.gd"
 BitTheme="*res://scripts/ui/theme.gd"
 Router="*res://scripts/ui/router.gd"
 Session="*res://scripts/services/session.gd"
+Payments="*res://scripts/services/payments_service.gd"
 StoreRepo="*res://scripts/services/store_repository.gd"
 Reviews="*res://scripts/services/reviews_service.gd"
 Coins="*res://scripts/services/coins_service.gd"
@@ -31,6 +33,7 @@ GitHubAuth="*res://scripts/services/github_auth.gd"
 github/repo="thomascaycho21-max/bitqbad-reviews"
 github/review_label="review"
 github/coins_repo="thomascaycho21-max/bitqbad-coins"
+github/session_repo="thomascaycho21-max/bitqbad-sesion"
 
 [display]
 

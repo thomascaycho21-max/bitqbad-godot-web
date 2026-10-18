@@ -1,5 +1,5 @@
 extends Node
-## Sesion persistente en user://session.cfg
+## Sesion persistente. Sin country/age (se piden al pagar).
 
 const PATH := "user://session.cfg"
 var user: Dictionary = {}
@@ -15,6 +15,8 @@ func load_session() -> void:
         "login": cfg.get_value("user", "login", ""),
         "name": cfg.get_value("user", "name", ""),
         "avatar": cfg.get_value("user", "avatar", ""),
+        "provider": cfg.get_value("user", "provider", "github"),
+        "role": cfg.get_value("user", "role", "user"),
     }
 
 func save_session(u: Dictionary) -> void:
@@ -23,6 +25,8 @@ func save_session(u: Dictionary) -> void:
     cfg.set_value("user", "login", u.get("login", ""))
     cfg.set_value("user", "name", u.get("name", ""))
     cfg.set_value("user", "avatar", u.get("avatar", ""))
+    cfg.set_value("user", "provider", u.get("provider", "github"))
+    cfg.set_value("user", "role", u.get("role", "user"))
     cfg.save(PATH)
 
 func logout() -> void:
@@ -32,3 +36,9 @@ func logout() -> void:
 
 func is_logged_in() -> bool:
     return not user.is_empty()
+
+func is_developer() -> bool:
+    return str(user.get("role", "user")) == "developer"
+
+func login() -> String:
+    return str(user.get("login", "anon"))

@@ -1,15 +1,14 @@
 extends Node
 signal reviews_loaded(app_id: String, reviews: Array)
+signal all_reviews_loaded(grouped: Dictionary)
 signal review_posted(ok: bool, message: String)
 
 var enabled := false
 var error := ""
 
 func _ready() -> void:
-    # Si estamos en web, esperamos un momento a que el navegador cargue config
     if OS.has_feature("web"):
         await get_tree().create_timer(0.5).timeout
-    
     var token := _cfg("token")
     var repo := _cfg("repo")
     if token == "": error = "Falta GITHUB_TOKEN"; return
@@ -17,29 +16,66 @@ func _ready() -> void:
     enabled = true
 
 func _cfg(key: String) -> String:
-    # 1. Si es Web, buscar en window.BITQBAD_CONFIG
     if OS.has_feature("web"):
         var js_code = "window.BITQBAD_CONFIG ? window.BITQBAD_CONFIG." + key + " : null"
         var url_val = JavaScriptBridge.eval(js_code)
         if url_val != null and str(url_val) != "null" and str(url_val) != "undefined" and str(url_val) != "":
             return str(url_val).strip_edges()
-
-    # 2. Si es Escritorio/APK, buscar en secrets.gd
-    var secrets_path = "res://scripts/services/secrets.gd"
-    if FileAccess.file_exists(secrets_path):
-        var secrets_script = load(secrets_path)
-        if secrets_script:
-            var secrets = secrets_script.new()
-            var val = secrets.get(key.to_upper())
-            if val != null and str(val) != "": return str(val).strip_edges()
-            secrets.free()
-
-    # 3. Variables de entorno (PC)
+    var sp := "res://scripts/services/secrets.gd"
+    if FileAccess.file_exists(sp):
+        var s = load(sp).new()
+        var val = s.get(key.to_upper())
+        s.free()
+        if val != null and str(val) != "": return str(val).strip_edges()
     var env := OS.get_environment("GITHUB_" + key.to_upper())
     if env != "": return env.strip_edges()
-
-    # 4. Fallback project.godot
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()
+
+# Token de escritura: SIEMPRE el del developer (no el del usuario)
+func _write_token() -> String:
+    var sp := "res://scripts/services/secrets.gd"
+    if FileAccess.file_exists(sp):
+        var s = load(sp).new()
+        var v = s.get("TOKEN")
+        s.free()
+        if v != null and str(v) != "": return str(v)
+    return _cfg("token")
+
+func list_all_reviews() -> void:
+    if not enabled: all_reviews_loaded.emit({}); return
+    var http := HTTPRequest.new(); add_child(http)
+    http.request_completed.connect(_on_list_all.bind(http), CONNECT_ONE_SHOT)
+    var url := "https://api.github.com/repos/%s/issues?state=all&labels=review&per_page=100" % _cfg("repo")
+    var headers := PackedStringArray(["Authorization: Bearer " + _cfg("token"), "Accept: application/vnd.github+json", "User-Agent: BitQbadPlayStore"])
+    http.request(url, headers, HTTPClient.METHOD_GET)
+
+func _on_list_all(result: int, code: int, _h: PackedStringArray, body: PackedByteArray, http: HTTPRequest) -> void:
+    http.queue_free()
+    if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+        all_reviews_loaded.emit({}); return
+    var arr = JSON.parse_string(body.get_string_from_utf8())
+    if not (arr is Array): all_reviews_loaded.emit({}); return
+    var grouped: Dictionary = {}
+    for issue in arr:
+        if not (issue is Dictionary) or issue.has("pull_request"): continue
+        var title := str(issue.get("title", ""))
+        if not title.begins_with("review:"): continue
+        var rest := title.substr("review:".length())
+        var idx := rest.find(" ::")
+        if idx < 0: continue
+        var app_id := rest.substr(0, idx).strip_edges()
+        var real_title := rest.substr(idx + 3).strip_edges()
+        var body_txt := str(issue.get("body", ""))
+        var rating := 0; var user := "anon"
+        var re := RegEx.new(); re.compile("<!--\\s*meta:\\s*(\\{.*?\\})\\s*-->")
+        var m := re.search(body_txt)
+        if m:
+            var meta = JSON.parse_string(m.get_string(1))
+            if meta is Dictionary: rating = int(meta.get("rating", 0)); user = str(meta.get("user", user))
+            body_txt = body_txt.replace(m.get_string(0), "").strip_edges()
+        if not grouped.has(app_id): grouped[app_id] = []
+        grouped[app_id].append({"id": issue.get("number", 0), "app_id": app_id, "user": user, "rating": rating, "title": real_title, "body": body_txt, "created_at": str(issue.get("created_at", "")), "url": str(issue.get("html_url", ""))})
+    all_reviews_loaded.emit(grouped)
 
 func list_reviews(app_id: String) -> void:
     if not enabled: reviews_loaded.emit(app_id, []); return
@@ -73,15 +109,19 @@ func _on_list(result: int, code: int, _h: PackedStringArray, body: PackedByteArr
 
 func post_review(app_id: String, title: String, body: String, rating: int, user := "anon") -> void:
     if not enabled: review_posted.emit(false, error); return
+    var tok := _write_token()
+    if tok == "":
+        review_posted.emit(false, "Token de escritura no configurado"); return
     var meta := JSON.stringify({"rating": rating, "user": user})
     var full_body := "<!-- meta: %s -->\n\n**App:** `%s`\n**Rating:** %d/5\n\n---\n\n%s\n" % [meta, app_id, rating, body]
     var payload := JSON.stringify({"title": "review:%s :: %s" % [app_id, title], "body": full_body, "labels": ["review"]})
     var http := HTTPRequest.new(); add_child(http)
     http.request_completed.connect(_on_post.bind(http), CONNECT_ONE_SHOT)
-    var headers := PackedStringArray(["Authorization: Bearer " + _cfg("token"), "Accept: application/vnd.github+json", "Content-Type: application/json", "User-Agent: BitQbadPlayStore"])
+    var headers := PackedStringArray(["Authorization: Bearer " + tok, "Accept: application/vnd.github+json", "Content-Type: application/json", "User-Agent: BitQbadPlayStore"])
     http.request("https://api.github.com/repos/%s/issues" % _cfg("repo"), headers, HTTPClient.METHOD_POST, payload)
 
 func _on_post(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray, http: HTTPRequest) -> void:
     http.queue_free()
-    if result == HTTPRequest.RESULT_SUCCESS and (code == 201 or code == 200): review_posted.emit(true, "Reseña publicada")
+    if result == HTTPRequest.RESULT_SUCCESS and (code == 201 or code == 200): review_posted.emit(true, "Resena publicada")
+    elif code == 401: review_posted.emit(false, "Token de escritura invalido (401)")
     else: review_posted.emit(false, "Error HTTP %d" % code)
