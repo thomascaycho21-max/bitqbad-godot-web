@@ -1,9 +1,15 @@
 FROM nginx:alpine
-# Instalar Node.js para el script de inyección
+
+# Instalar Node.js
 RUN apk add --no-cache nodejs
+
+# Copiar build web y scripts
 COPY build/web /usr/share/nginx/html
+COPY inject.js /inject.js
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+# Configurar Nginx
 RUN printf 'server {\n\
   listen 80;\n\
   root /usr/share/nginx/html;\n\
@@ -14,6 +20,7 @@ RUN printf 'server {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\
 }\n' > /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
