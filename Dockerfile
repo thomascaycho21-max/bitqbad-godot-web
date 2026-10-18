@@ -1,4 +1,6 @@
 FROM nginx:alpine
+# Instalar Node.js para el script de inyección
+RUN apk add --no-cache nodejs
 COPY build/web /usr/share/nginx/html
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

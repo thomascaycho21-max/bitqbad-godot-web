@@ -6,7 +6,10 @@ var enabled := false
 var error := ""
 
 func _ready() -> void:
-    await get_tree().create_timer(1.0).timeout # Espera a que cargue config.js en Render
+    # Si estamos en web, esperamos un momento a que el navegador cargue config
+    if OS.has_feature("web"):
+        await get_tree().create_timer(0.5).timeout
+    
     var token := _cfg("token")
     var repo := _cfg("repo")
     if token == "": error = "Falta GITHUB_TOKEN"; return
@@ -14,7 +17,14 @@ func _ready() -> void:
     enabled = true
 
 func _cfg(key: String) -> String:
-    # 1. Local (secrets.gd)
+    # 1. Si es Web, buscar en window.BITQBAD_CONFIG
+    if OS.has_feature("web"):
+        var js_code = "window.BITQBAD_CONFIG ? window.BITQBAD_CONFIG." + key + " : null"
+        var url_val = JavaScriptBridge.eval(js_code)
+        if url_val != null and str(url_val) != "null" and str(url_val) != "undefined" and str(url_val) != "":
+            return str(url_val).strip_edges()
+
+    # 2. Si es Escritorio/APK, buscar en secrets.gd
     var secrets_path = "res://scripts/services/secrets.gd"
     if FileAccess.file_exists(secrets_path):
         var secrets_script = load(secrets_path)
@@ -23,15 +33,11 @@ func _cfg(key: String) -> String:
             var val = secrets.get(key.to_upper())
             if val != null and str(val) != "": return str(val).strip_edges()
             secrets.free()
-    # 2. Web (Render config.js)
-    if OS.has_feature("web"):
-        var js_code = "window.BITQBAD_CONFIG ? window.BITQBAD_CONFIG." + key + " : null"
-        var url_val = JavaScriptBridge.eval(js_code)
-        if url_val != null and str(url_val) != "null" and str(url_val) != "undefined" and str(url_val) != "":
-            return str(url_val).strip_edges()
-    # 3. Variables de entorno nativas (PC)
+
+    # 3. Variables de entorno (PC)
     var env := OS.get_environment("GITHUB_" + key.to_upper())
     if env != "": return env.strip_edges()
+
     # 4. Fallback project.godot
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()
 
