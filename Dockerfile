@@ -1,10 +1,7 @@
 FROM nginx:alpine
-
 COPY build/web /usr/share/nginx/html
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Configuración de Nginx con los headers de seguridad de Godot
 RUN printf 'server {\n\
   listen 80;\n\
   root /usr/share/nginx/html;\n\
@@ -15,7 +12,6 @@ RUN printf 'server {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\
 }\n' > /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

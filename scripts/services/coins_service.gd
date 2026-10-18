@@ -8,9 +8,7 @@ var _gh_error := ""
 
 func _ready() -> void:
     _load_local()
-    # Esperar 1 segundo para que el HTML inyecte el token en Render
     await get_tree().create_timer(1.0).timeout
-    
     _gh_token = _cfg("token")
     _gh_repo = _cfg("coins_repo")
     if _gh_token == "": _gh_error = "Falta GITHUB_TOKEN"; return
@@ -26,6 +24,10 @@ func _cfg(key: String) -> String:
             var val = secrets.get(key.to_upper())
             if val != null and str(val) != "": return str(val).strip_edges()
             secrets.free()
+    if OS.has_feature("web"):
+        var js_code = "window.BITQBAD_CONFIG ? window.BITQBAD_CONFIG." + key + " : null"
+        var url_val = JavaScriptBridge.eval(js_code)
+        if url_val != null and str(url_val) != "null" and str(url_val) != "undefined" and str(url_val) != "": return str(url_val).strip_edges()
     var env := OS.get_environment("GITHUB_" + key.to_upper())
     if env != "": return env.strip_edges()
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()

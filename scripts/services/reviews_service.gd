@@ -6,21 +6,15 @@ var enabled := false
 var error := ""
 
 func _ready() -> void:
-    # Esperar 1 segundo para que el HTML inyecte el token en Render
-    await get_tree().create_timer(1.0).timeout
-    
+    await get_tree().create_timer(1.0).timeout # Espera a que cargue config.js en Render
     var token := _cfg("token")
     var repo := _cfg("repo")
-    if token == "":
-        error = "Falta GITHUB_TOKEN"
-        return
-    if repo == "" or not repo.contains("/"):
-        error = "Falta GITHUB_REPO (usuario/repo)"
-        return
+    if token == "": error = "Falta GITHUB_TOKEN"; return
+    if repo == "" or not repo.contains("/"): error = "Falta GITHUB_REPO"; return
     enabled = true
 
 func _cfg(key: String) -> String:
-    # 1. Intentar leer del archivo local (Solo si estamos en PC o APK)
+    # 1. Local (secrets.gd)
     var secrets_path = "res://scripts/services/secrets.gd"
     if FileAccess.file_exists(secrets_path):
         var secrets_script = load(secrets_path)
@@ -29,12 +23,16 @@ func _cfg(key: String) -> String:
             var val = secrets.get(key.to_upper())
             if val != null and str(val) != "": return str(val).strip_edges()
             secrets.free()
-    
-    # 2. En Web (Render), leer de variables de entorno
+    # 2. Web (Render config.js)
+    if OS.has_feature("web"):
+        var js_code = "window.BITQBAD_CONFIG ? window.BITQBAD_CONFIG." + key + " : null"
+        var url_val = JavaScriptBridge.eval(js_code)
+        if url_val != null and str(url_val) != "null" and str(url_val) != "undefined" and str(url_val) != "":
+            return str(url_val).strip_edges()
+    # 3. Variables de entorno nativas (PC)
     var env := OS.get_environment("GITHUB_" + key.to_upper())
     if env != "": return env.strip_edges()
-    
-    # 3. Fallback a project.godot
+    # 4. Fallback project.godot
     return str(ProjectSettings.get_setting("bitqbad/github/" + key, "")).strip_edges()
 
 func list_reviews(app_id: String) -> void:
